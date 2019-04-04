@@ -2,13 +2,16 @@
 
 namespace Drush\Commands\kit_drush;
 
+use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
-use Drush\Drush;
+use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 
 /**
  * Command to run checks response status on a list of URLs.
  */
-class UrlCommands extends DrushCommands {
+class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterface  {
+
+  use SiteAliasManagerAwareTrait;
 
   /**
    * Check response status on a list of urls.
@@ -121,15 +124,33 @@ class UrlCommands extends DrushCommands {
    * @return mixed
    */
   protected function getHttpCode($url, $curl_options) {
-    if (!parse_url($url, PHP_URL_HOST)) {
+    // Add host if host is missing.
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host) {
+      // Get URI from drush.
+      if ($drush_uri = $this->siteAliasManager()->getSelf()->uri()) {
+        $host = parse_url($drush_uri, PHP_URL_HOST);
+      }
+
+      if (empty($host) &&  $drush_uri = drush_get_context('DRUSH_URI', NULL)) {
+        $host = parse_url($drush_uri, PHP_URL_HOST);
+      }
+
+      if (empty($host) && isset($_SERVER['VIRTUAL_HOST'])) {
+        $host = $_SERVER['VIRTUAL_HOST'];
+      }
+
       // Build a URI for the current site, if we were passed a path.
-      $url = drush_get_context('DRUSH_URI') . '/' . ltrim($url, '/');
+      $url = $host . '/' . ltrim($url, '/');
     }
 
     $curl_session = curl_init($url);
     curl_setopt_array($curl_session, $curl_options);
     curl_exec($curl_session);
     $http_code = curl_getinfo($curl_session, CURLINFO_HTTP_CODE);
+    if ($http_code === 0) {
+      $http_code = curl_error($curl_session);
+    }
     curl_close($curl_session);
 
     return $http_code;
