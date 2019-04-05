@@ -25,17 +25,17 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
    *   list of URLs as keys, with values being the desired HTTP response code.
    * @option url-threshold
    *   Number of URLs to allow to fail and still pass check.
-   * @option watchdog-error-threshold
-   *   Number of watchdog errors allowed during URL check and still pass check.
-   * @option watchdog-warning-threshold
-   *   Number of watchdog warnings allowed during URL check and still pass check.
+   * @option log-error-threshold
+   *   Number of log errors allowed during URL check and still pass check.
+   * @option log-warning-threshold
+   *   Number of log warnings allowed during URL check and still pass check.
    * @command kit-url-check
    * @usage drush url-check /cool/page,/another/cool/page
    * @aliases kuc, kcheck, url-check
    */
-  public function check($options = ['urls' => '', 'url-file' => NULL, 'url-threshold' => 0, 'watchdog-error-threshold' => NULL, 'watchdog-warning-threshold' => NULL]) {
-    $log_error_threshold = (!is_null($options['watchdog-error-threshold'])) ? intval($options['watchdog-error-threshold']) : NULL;
-    $log_warning_threshold = (!is_null($options['watchdog-warning-threshold'])) ? intval($options['watchdog-warning-threshold']) : NULL;
+  public function check($options = ['urls' => '', 'url-file' => NULL, 'url-threshold' => 0, 'log-error-threshold' => NULL, 'log-warning-threshold' => NULL]) {
+    $log_error_threshold = (!is_null($options['log-error-threshold'])) ? intval($options['log-error-threshold']) : NULL;
+    $log_warning_threshold = (!is_null($options['log-warning-threshold'])) ? intval($options['log-warning-threshold']) : NULL;
     $url_threshold = intval($options['url-threshold']);
     $curl_options = [
       CURLOPT_AUTOREFERER    => TRUE,
@@ -125,7 +125,7 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
       }
     }
 
-    // Check logs against threshold if threshold is set.
+    // Check log warnings against threshold if threshold is set.
     if (!is_null($log_warning_threshold)) {
       $this->io()->title(dt('Running log warning check'));
 
@@ -147,18 +147,55 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
           ];
         }
         $this->io()->table($headers, $rows);
-      }
 
-      $message_params = [
-        '@count' => count($logs),
-        '@threshold' => $log_warning_threshold
-      ];
-      if (count($logs) > $log_warning_threshold) {
-        $this->io()->error(dt('Log warning check failed. Total number of log warnings (@count) exceeded threshold of @threshold.', $message_params));
-        return new CommandError();
+        $message_params = [
+          '@count' => count($logs),
+          '@threshold' => $log_warning_threshold
+        ];
+        if (count($logs) > $log_warning_threshold) {
+          $this->io()->error(dt('Log warning check failed. Total number of log warnings (@count) exceeded threshold of @threshold.', $message_params));
+          return new CommandError();
+        }
+        else {
+          $this->io()->warning(dt('Log warning check  succeeded. Total number of log warnings (@count) didn\'t exceed threshold of @threshold.', $message_params));
+        }
+      }
+    }
+
+    // Check log errors against threshold if threshold is set.
+    if (!is_null($log_error_threshold)) {
+      $this->io()->title(dt('Running log error check'));
+
+      $logs = $this->getLogs('Critical');
+
+      // Notify the user and potentially error.
+      if (empty($logs)) {
+        $this->io()->success(dt('Log error check succeeded. No log errors found.'));
       }
       else {
-        $this->io()->warning(dt('Log warning check  succeeded. Total number of log warnings (@count) didn\'t exceed threshold of @threshold.', $message_params));
+        // Print logs to the user.
+        $headers = ['Type', 'Message', 'Location'];
+        $rows = [];
+        foreach ($logs as $log) {
+          $rows[] = [
+            $log['type'],
+            $log['message'],
+            $log['location'],
+          ];
+        }
+        $this->io()->table($headers, $rows);
+
+        $message_params = [
+          '@count' => count($logs),
+          '@threshold' => $log_error_threshold
+        ];
+        if (count($logs) > $log_error_threshold) {
+          $this->io()->error(dt('Log error check failed. Total number of log errors (@count) exceeded threshold of @threshold.', $message_params));
+          return new CommandError();
+        }
+        else {
+          $this->io()->warning(dt('Log error check  succeeded. Total number of log errors (@count) didn\'t exceed threshold of @threshold.', $message_params));
+        }
       }
     }
 
@@ -178,7 +215,7 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
   protected function getLogs($severity = NULL) {
     $command_options[] = '-y';
     if (!empty($severity)) {
-      $command_options['--severity'] = $severity;
+      $command_options[] = "--severity={$severity}";
     }
     $backend_options = [
       'log' => FALSE,
