@@ -2,10 +2,10 @@
 
 namespace Drush\Commands\kit_drush;
 
+use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
-use Drush\Exceptions\UserAbortException;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /**
@@ -39,7 +39,8 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     }
 
     if (empty($operation)) {
-      throw new UserAbortException('Operation required.');
+      $this->io()->error(dt('Operation required.'));
+      return new CommandError();
     }
 
     // Get site if not passed in, or site doesn't exist in available sites.
