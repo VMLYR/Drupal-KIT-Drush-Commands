@@ -5,6 +5,7 @@ namespace Drush\Commands\kit_drush;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
+use Drush\Internal\Config\Yaml\Yaml;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 
 /**
@@ -17,12 +18,14 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
   /**
    * Check response status on a list of urls.
    *
+   * @option fail-500
+   *   Force URL check to fail if any of the URLs return a 500 error.
+   * @option file
+   *   Path to a yaml file with a list of URLs to check. The file should be a
+   *   list of URLs as keys, with values being the desired HTTP response code.
    * @option urls
    *   Urls to check. Optional HTTP response code can be appended using |.
    *   example: --urls='/url/path/here|200','/as|404', 'http://site.docksal|301'
-   * @option url-file
-   *   Path to a yaml file with a list of URLs to check. The file should be a
-   *   list of URLs as keys, with values being the desired HTTP response code.
    * @option url-threshold
    *   Number of URLs to allow to fail and still pass check.
    * @option log-error-threshold
@@ -33,7 +36,7 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
    * @usage drush url-check /cool/page,/another/cool/page
    * @aliases kuc, kcheck, url-check
    */
-  public function check($options = ['urls' => '', 'url-file' => NULL, 'url-threshold' => 0, 'log-error-threshold' => NULL, 'log-warning-threshold' => NULL]) {
+  public function check($options = ['fail-500' => TRUE, 'file' => NULL, 'urls' => '', 'url-threshold' => 0, 'log-error-threshold' => NULL, 'log-warning-threshold' => NULL]) {
     $log_error_threshold = (!is_null($options['log-error-threshold'])) ? intval($options['log-error-threshold']) : NULL;
     $log_warning_threshold = (!is_null($options['log-warning-threshold'])) ? intval($options['log-warning-threshold']) : NULL;
     $url_threshold = intval($options['url-threshold']);
@@ -55,9 +58,21 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
       CURLOPT_USERAGENT      => 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)',
     ];
 
+    $urls = [];
+
+    // Clean and place file URLs into array.
+    if (!empty($options['file'])) {
+      $file_path = realpath($this->getConfig()->cwd() . '/' . $options['file']);
+      $file_config = Yaml::parse(file_get_contents($file_path));
+      if (isset($file_config['kit-url-check']['urls'])) {
+        foreach ($file_config['kit-url-check']['urls'] as $url => $code) {
+          $urls[$url] = intval($code);
+        }
+      }
+    }
+
     // Clean and place URLs into array with desired HTTP response keyed by URL.
     $option_urls = array_map('trim', array_filter(explode(',', $options['urls'])));
-    $urls = [];
     foreach ($option_urls as $option_url) {
       list($url, $code) = explode('|', $option_url, 2);
       $urls[$url] = (isset($code)) ? intval($code) : 200;
@@ -78,6 +93,7 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
     $this->io()->title(dt('Running URL check'));
 
     // Run through each URL.
+    $fail_500 = FALSE;
     $url_mismatch = [];
     foreach($urls as $url => $desired_http_code) {
       // Disable redirects if looking for a redirect.
@@ -96,6 +112,11 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
       // Track is http code isn't same as desired http code.
       if ($returned_http_code !== $desired_http_code) {
         $url_mismatch[$url] = $returned_http_code;
+      }
+
+      // Track 500 errors if the option to fail on 500 errors is set.
+      if ($options['fail-500'] && $returned_http_code === 500) {
+        $fail_500 = TRUE;
       }
     }
 
@@ -118,6 +139,10 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
       ];
       if (count($url_mismatch) > $url_threshold) {
         $this->io()->error(dt('URL check failed. Total number of HTTP code mismatches (@count) exceeded threshold of @threshold.', $message_params));
+        return new CommandError();
+      }
+      else if ($fail_500) {
+        $this->io()->error(dt('URL check failed. Atleast one of the HTTP code responses was a 500.', $message_params));
         return new CommandError();
       }
       else {

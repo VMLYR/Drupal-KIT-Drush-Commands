@@ -1,0 +1,5 @@
+kit-url-check:
+  urls:
+    'http://www.test-url-here.docksal/': 301
+    '/this/page/doesnt/exist': 404
+    '/': 200
