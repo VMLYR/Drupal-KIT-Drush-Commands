@@ -13,6 +13,8 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
  */
 class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterface {
 
+  use EnabledModulesTrait;
+  use EnvironmentsTrait;
   use SiteAliasManagerAwareTrait;
 
   /**
@@ -138,90 +140,6 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     }
 
     $this->io()->newLine();
-  }
-
-  /**
-   * Checks if a module is installed.
-   *
-   * @param string $alias
-   *   The Drush alias.
-   * @param string $module
-   *   The module name.
-   *
-   * @return bool
-   *   True if module is enabled. False otherwise.
-   */
-  protected function checkEnabledModule($alias, $module) {
-    return array_key_exists($module, $this->getEnabledModules($alias));
-  }
-
-  /**
-   * Get enabled modules from a specific alias.
-   *
-   * @param string $alias
-   *   The Drush alias.
-   *
-   * @return mixed
-   *   An array of enabled module IDs.
-   */
-  public function getEnabledModules($alias) {
-    $command_options = [
-      '--status=enabled',
-    ];
-    $backend_options = [
-      'log' => FALSE,
-      'output' => FALSE,
-    ];
-    $response = drush_invoke_process($alias, 'pm-list', [], $command_options, $backend_options);
-    if ($response) {
-      return $response['object'];
-    }
-
-    return [];
-  }
-
-  /**
-   * Gets the alias' site.
-   *
-   * @param string $alias
-   *   The Drush alias.
-   *
-   * @return string
-   *   The site of the alias.
-   */
-  protected function getDrushAliasSite($alias) {
-    return explode('.', str_replace('@', '', $alias), 2)[0];
-  }
-
-  /**
-   * A list of all available site keys.
-   *
-   * @return string[]
-   *   An array of site keys.
-   */
-  protected function getSites() {
-    return array_unique(array_map(function ($key) {
-      return $this->getDrushAliasSite($key);
-    }, array_keys($this->siteAliasManager()->getMultiple())));
-  }
-
-  /**
-   * Get a site's environment keys from its Drush aliases.
-   *
-   * @param string $site
-   *   The site key.
-   *
-   * @return string[]
-   *   An array of a site's environment options.
-   */
-  protected function getSiteEnvironments($site) {
-    $aliases = $this->siteAliasManager()->getMultiple("@{$site}");
-
-    $environments = array_map(function ($alias) {
-      return explode('.', $alias->name(), 2)[1];
-    }, $aliases);
-
-    return $environments;
   }
 
 }
