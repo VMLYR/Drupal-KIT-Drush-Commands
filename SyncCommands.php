@@ -18,6 +18,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
   use EnabledModulesTrait;
   use EnvironmentsTrait;
   use SiteAliasManagerAwareTrait;
+  use WriteWrapperTrait;
 
   /**
    * The path evaluator.
@@ -120,42 +121,11 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     // Run or skip composer import.
     $this->sectionComposer($skip_composer);
 
-
     // Run or skip database sync.
     $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import);
-  }
 
-  /**
-   * Wrapper method to write information back to the user.
-   *
-   * @param string $message
-   *   The message to write.
-   * @param null|string $type
-   *   The type of message.
-   * @param bool $overwrite
-   *   Whether this message should replace the current line.
-   */
-  protected function write($message, $type = NULL, $overwrite = FALSE) {
-    if ($overwrite && !$this->io()->isVerbose()) {
-      $this->write("\x0D");
-    }
-
-    switch ($type) {
-      case 'error':
-        $this->logger()->error($message);
-        break;
-      case 'notice':
-        $this->logger()->notice($message);
-        break;
-      case 'success':
-        $this->logger()->success($message);
-        break;
-      case 'warning':
-        $this->logger()->warning($message);
-        break;
-      default:
-        $this->io()->write(sprintf(' %s', $message));
-    }
+    // Run or skip configuration sync.
+    $this->sectionConfig($site, $environment_as, $skip_config);
   }
 
   /**
@@ -188,11 +158,18 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
   }
 
   /**
-   * @param $site
-   * @param $environment_from
+   * Run the database sync step.
+   *
+   * @param string $site
+   *   The site to pull the database from.
+   * @param string $environment_from
+   *   The environment to pull the database from.
    * @param null $dump_directory
+   *   The directory where the database dump should be saved.
    * @param bool $skip_db_dump
+   *   Whether the database dump section should be skipped.
    * @param bool $skip_db_import
+   *   Whether the database import section should be skipped.
    */
   protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE) {
     $this->io()->newLine();
@@ -303,6 +280,39 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
             $this->write($process->getErrorOutput());
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Run the config sync step.
+   *
+   * @param string $site
+   *   The site to sync config for.
+   * @param string $environment
+   *   The environment to import as.
+   * @param bool $skip
+   *   Whether the section should be skipped.
+   */
+  protected function sectionConfig($site, $environment = 'local', $skip = FALSE) {
+    $this->io()->newLine();
+    $this->io()->title('Configuration');
+
+    // Run or skip configuration sync.
+    if ($skip) {
+      $this->write('Skipping configuration sync.', 'notice');
+    }
+    else {
+      $this->write("Syncing configuration for {$site} as {$environment}.");
+      $alias = $this->siteAliasManager()->get("@{$site}.local");
+      $process = Drush::drush($alias, 'kit-conf', ['import', $environment], ['yes' => TRUE]);
+      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+      if ($success === 0) {
+        $this->write("Imported configuration for {$site} as {$environment}.", 'success', TRUE);
+      }
+      else {
+        $this->write('Failure importing configuration.', 'error', TRUE);
+        $this->write($process->getErrorOutput());
       }
     }
   }
