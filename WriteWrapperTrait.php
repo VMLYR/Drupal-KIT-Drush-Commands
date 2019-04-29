@@ -19,7 +19,10 @@ trait WriteWrapperTrait {
    */
   protected function write($message, $type = NULL, $overwrite = FALSE) {
     if ($overwrite && !$this->io()->isVerbose()) {
+      // Move the cursor to the beginning of the line
       $this->write("\x0D");
+      // Erase the line
+      $this->write("\x1B[2K");
     }
 
     switch ($type) {
