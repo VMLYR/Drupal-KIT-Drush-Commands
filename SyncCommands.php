@@ -305,7 +305,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     else {
       $this->write("Syncing configuration for {$site} as {$environment}.");
       $alias = $this->siteAliasManager()->get("@{$site}.local");
-      $process = Drush::drush($alias, 'kit-conf', ['import', $environment], ['yes' => TRUE]);
+      $process = Drush::drush($alias, 'kit:conf', ['import', $environment], ['yes' => TRUE]);
       $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
       if ($success === 0) {
         $this->write("Imported configuration for {$site} as {$environment}.", 'success', TRUE);
