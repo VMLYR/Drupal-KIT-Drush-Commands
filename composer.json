@@ -10,6 +10,11 @@
       "email": "garrett.rathbone@vml.com"
     }
   ],
+  "extra": {
+    "branch-alias": {
+      "dev-master": "master"
+    }
+  },
   "autoload": {
     "psr-4": {
       "Drush\\Commands\\": "src/Commands"
@@ -17,5 +22,6 @@
   },
   "require": {
     "oomphinc/composer-installers-extender": "^1.0"
-  }
+  },
+  "minimum-stability": "dev"
 }
