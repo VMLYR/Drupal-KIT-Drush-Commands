@@ -10,11 +10,6 @@
       "email": "garrett.rathbone@vml.com"
     }
   ],
-  "autoload": {
-    "psr-4": {
-      "Drush\\Commands\\kit_drush\\": "src/"
-    }
-  },
   "require": {
     "oomphinc/composer-installers-extender": "^1.0"
   }
