@@ -8,6 +8,9 @@ use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Consolidation\SiteProcess\SiteProcess;
 use Drush\Commands\DrushCommands;
+use Drush\Commands\kit_drush\Util\EnabledModulesTrait;
+use Drush\Commands\kit_drush\Util\EnvironmentsTrait;
+use Drush\Commands\kit_drush\Util\WriteWrapperTrait;
 use Drush\Drush;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 

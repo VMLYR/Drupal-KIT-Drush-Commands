@@ -1,6 +1,6 @@
 <?php
 
-namespace Drush\Commands\kit_drush;
+namespace Drush\Commands\kit_drush\Util;
 
 /**
  * Inflection trait for getting site environments.

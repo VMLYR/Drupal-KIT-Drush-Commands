@@ -17,7 +17,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Drush\\Commands\\": "src/Commands"
+      "Drush\\Commands\\kit_drush\\Util\\": "src/Util"
     }
   },
   "require": {
