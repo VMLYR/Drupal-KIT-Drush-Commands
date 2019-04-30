@@ -1,0 +1,16 @@
+{
+  "name": "vmlyr-drupal/kit-drush-commands",
+  "description": "Drush Commands for VMLYR Drupal KIT",
+  "license": "GPL-2.0+",
+  "type": "drupal-drush",
+  "homepage": "https://github.com/VML/Drupal-KIT-Drush-Commands",
+  "authors": [
+    {
+      "name": "Garrett Rathbone",
+      "email": "garrett.rathbone@vml.com"
+    }
+  ],
+  "require": {
+    "oomphinc/composer-installers-extender": "^1.0"
+  }
+}

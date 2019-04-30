@@ -9,11 +9,12 @@ use Drush\Internal\Config\Yaml\Yaml;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 
 /**
- * Command to run checks response status on a list of URLs.
+ * Command that checks response status on a list of URLs.
  */
 class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterface  {
 
   use SiteAliasManagerAwareTrait;
+  use WriteWrapperTrait;
 
   /**
    * Check response status on a list of urls.
@@ -32,9 +33,9 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
    *   Number of log errors allowed during URL check and still pass check.
    * @option log-warning-threshold
    *   Number of log warnings allowed during URL check and still pass check.
-   * @command kit-url-check
-   * @usage drush url-check /cool/page,/another/cool/page
-   * @aliases kuc, kcheck, url-check
+   * @command kit:check-url
+   * @usage drush check-url /cool/page,/another/cool/page
+   * @aliases kcu, check-url
    */
   public function check($options = ['fail-500' => TRUE, 'file' => NULL, 'urls' => '', 'url-threshold' => 0, 'log-error-threshold' => NULL, 'log-warning-threshold' => NULL]) {
     $log_error_threshold = (!is_null($options['log-error-threshold'])) ? intval($options['log-error-threshold']) : NULL;
@@ -76,6 +77,11 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
     foreach ($option_urls as $option_url) {
       list($url, $code) = explode('|', $option_url, 2);
       $urls[$url] = (isset($code)) ? intval($code) : 200;
+    }
+
+    // If no URLs have been passed to the command, use drush config urls.
+    if (empty($urls)) {
+      $urls = $this->getConfig()->get('kit.url_check.urls', []);
     }
 
     // Clear logs if threshold is set.

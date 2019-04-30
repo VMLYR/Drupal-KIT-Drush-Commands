@@ -54,10 +54,10 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    *   Skip the database dump and use existing database-dump for import.
    * @option skip-db-import
    *   Skip thd database import.
-   * @command kit-sync
+   * @command kit:sync
    * @usage drush sync www remote_prod local
    *   Syncs local environment from another environment.
-   * @aliases ks, sync
+   * @aliases ks, ksync, sync
    */
   public function sync($site = NULL, $environment_from = NULL, $environment_as = NULL, $options = ['dump-dir' => NULL, 'skip-composer' => FALSE, 'skip-config' => FALSE, 'skip-db-dump' => FALSE, 'skip-db-import' => FALSE]) {
     $skip_composer = (isset($options['skip-composer']) && $options['skip-composer']);
