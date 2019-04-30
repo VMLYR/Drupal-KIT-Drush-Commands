@@ -1,6 +1,6 @@
 <?php
 
-namespace Drush\Commands\kit_drush\Util;
+namespace Drush\Commands\kit_drush_commands\Util;
 
 /**
  * Inflection trait to wrap writing to output.

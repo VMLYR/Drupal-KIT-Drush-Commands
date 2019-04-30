@@ -1,6 +1,6 @@
 <?php
 
-namespace Drush\Commands\kit_drush;
+namespace Drush\Commands\kit_drush_commands;
 
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAlias;
