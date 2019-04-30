@@ -7,7 +7,7 @@ use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drupal\Component\Utility\Html;
 use Drush\Backend\BackendPathEvaluator;
 use Drush\Commands\DrushCommands;
-use Drush\Commands\kit_drush\Util\WriteWrapperTrait;
+use Drush\Commands\kit_drush_commands\Util\WriteWrapperTrait;
 use Drush\SiteAlias\HostPath;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;

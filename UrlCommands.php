@@ -5,7 +5,7 @@ namespace Drush\Commands\kit_drush_commands;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Commands\DrushCommands;
-use Drush\Commands\kit_drush\Util\WriteWrapperTrait;
+use Drush\Commands\kit_drush_commands\Util\WriteWrapperTrait;
 use Drush\Internal\Config\Yaml\Yaml;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 
