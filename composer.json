@@ -21,7 +21,8 @@
     }
   },
   "require": {
-    "oomphinc/composer-installers-extender": "^1.0"
+    "oomphinc/composer-installers-extender": "^1.0",
+    "drush/drush": "^9.6.0"
   },
   "minimum-stability": "dev"
 }
