@@ -66,8 +66,8 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
     if (!empty($options['file'])) {
       $file_path = realpath($this->getConfig()->cwd() . '/' . $options['file']);
       $file_config = Yaml::parse(file_get_contents($file_path));
-      if (isset($file_config['kit-url-check']['urls'])) {
-        foreach ($file_config['kit-url-check']['urls'] as $url => $code) {
+      if (isset($file_config['kit']['url_check']['urls'])) {
+        foreach ($file_config['kit']['url_check']['urls'] as $url => $code) {
           $urls[$url] = intval($code);
         }
       }
