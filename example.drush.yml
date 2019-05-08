@@ -75,6 +75,6 @@ kit:
   #        source_repo_branch: master
   url_check:
     urls:
-      'http://example.docksal/': 301
+      'http://www.test-url-here.docksal/': 301
       '/this/page/doesnt/exist': 404
       '/': 200
