@@ -66,13 +66,13 @@ kit:
     source_directory: source/themes
     # A list of Scaffold theme information to use as options to scaffold from.
     scaffold_themes: []
-  #      example:
-  #        title: Title name here
-  #        description: description of theme here
-  #        theme_repo: https://github.com/PROJECT/theme_repository.git
-  #        theme_repo_branch: master
-  #        source_repo: https://github.com/PROJECT/theme_source_repository.git
-  #        source_repo_branch: master
+#      example:
+#        title: Title name here
+#        description: description of theme here
+#        theme_repo: https://github.com/PROJECT/theme_repository.git
+#        theme_repo_branch: master
+#        source_repo: https://github.com/PROJECT/theme_source_repository.git
+#        source_repo_branch: master
   url_check:
     urls:
       'http://www.test-url-here.docksal/': 301
