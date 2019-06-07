@@ -4,6 +4,61 @@
 # Docs at https://github.com/drush-ops/drush/blob/master/examples/example.drush.yml
 #
 # Edit or remove this file as needed.
+drush:
+# This section is for setting global options.
+options:
+#  uri: 'https://www.example.docksal'
+#  verbose: true
+
+# This section is for setting command-specific options.
+command:
+  sql:
+    dump:
+      options:
+        # Uncomment to omit cache and similar tables (including during a sql:sync).
+        structure-tables-key: common
+sql:
+  # An explicit list of tables which should be included in sql-dump and sql-sync.
+  #  tables:
+  #    common:
+  #      - user
+  #      - permissions
+  #      - role_permissions
+  #      - role
+  # List of tables whose *data* is skipped by the 'sql-dump' and 'sql-sync'
+  # commands when the "--structure-tables-key=common" option is provided.
+  # You may add specific tables to the existing array or add a new element.
+  structure-tables:
+    common:
+      - cache
+      - 'cache_*'
+      - history
+      - 'search_*'
+      - 'sessions'
+      - 'watchdog'
+  # List of tables to be omitted entirely from SQL dumps made by the 'sql-dump'
+  # and 'sql-sync' commands when the "--skip-tables-key=common" option is
+  # provided on the command line.  This is useful if your database contains
+  # non-Drupal tables used by some other application or during a migration for
+  # example.  You may add new tables to the existing array or add a new element.
+  skip-tables:
+    common:
+      - 'migration_*'
+
+ssh:
+  # Specify options to pass to ssh in backend invoke.  The default is to prohibit
+  # password authentication, and is included here, so you may add additional
+  # parameters without losing the default configuration.
+  options: '-o PasswordAuthentication=no -o LogLevel=QUIET'
+  # This string is valid for Bash shell. Override in case you need something different. See https://github.com/drush-ops/drush/issues/3816.
+  pipefail: 'set -o pipefail; '
+
+notify:
+#Notify when command takes more than 30 seconds.
+#duration: 30
+# Specify a command to run. Defaults to Notification Center (OSX) or libnotify (Linux)
+# cmd: /path/to/program
+# See src/Commands/core/NotifyCommands.php for more configuration settings.
 
 kit:
   theme:

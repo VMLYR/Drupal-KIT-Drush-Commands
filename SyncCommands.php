@@ -226,21 +226,12 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       }
       else {
         $this->write('Dumping database to file.');
-        $sql_dump_opts = [
-          'result-file' => $dump_file,
-          'ssh-options' => '-o PasswordAuthentication=no -o LogLevel=QUIET',
-          'skip-tables-key=common' => TRUE,
-          'skip-tables-list' => 'cache,cache_*'
-        ];
 
-        $environment_from_alias = $this->siteAliasManager()->getAlias("@{$site}.{$environment_from}");
-        $process = Drush::drush($environment_from_alias, 'sql:dump', [], $sql_dump_opts);
-
+        $process = Drush::process("drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_abs}");
         $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
 
         if ($success === 0) {
-          $process_output = str_replace(' [success] ', '', $process->getErrorOutput());
-          $this->write($process_output, 'success', TRUE);
+          $this->write('Dumping database to file.', 'success', TRUE);
         }
         else {
           $this->write('Error dumping database.', 'error', TRUE);
@@ -273,7 +264,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Dropped local database.', 'success', TRUE);
           $this->write('Importing database from file.');
 
-          $process = $this->processManager()->shell("drush sql:cli < {$dump_file_abs}", '/var/www/docroot');
+          $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush sqlc", '/var/www/docroot');
           $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
           if ($success === 0) {
             $this->write('Imported database from file.', 'success', TRUE);
