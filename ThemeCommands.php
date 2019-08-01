@@ -40,24 +40,7 @@ class ThemeCommands extends DrushCommands implements SiteAliasManagerAwareInterf
    * @return array
    */
   protected function getDefaultScaffoldThemeConfig () {
-    return [
-      'skeleto' => [
-        'title' => 'Skeleto',
-        'description' => 'A barebones scaffolding theme.',
-        'theme_repo' => 'https://github.com/VML/Drupal-Theme-Skeleto.git',
-        'theme_repo_branch' => 'master',
-        'source_repo' => 'https://github.com/VML/Drupal-Theme-Source-Skeleto.git',
-        'source_repo_branch' => 'master',
-      ],
-      'denim' => [
-        'title' => 'Denim',
-        'description' => 'A featured-filled scaffoldong theme that works well with the Kastoro profile.',
-        'theme_repo' => 'https://github.com/VML/Drupal-Theme-Denim.git',
-        'theme_repo_branch' => 'master',
-        'source_repo' => 'https://github.com/VML/Drupal-Theme-Source-Denim.git',
-        'source_repo_branch' => 'master',
-      ],
-    ];
+    return [];
   }
 
   /**
