@@ -61,18 +61,35 @@ notify:
 # See src/Commands/core/NotifyCommands.php for more configuration settings.
 
 kit:
+  reset:
+    commands:
+      - name: 'Updating Database'
+        drush: 'updatedb -y'
+      - name: 'Updating Entities'
+        drush: 'entup -y'
+      - name: 'Importing configuration'
+        drush: 'cim sync -y'
+      - name: 'Rebuilding Cache'
+        drush: 'cr'
   theme:
-    # Directory relative to the project root to store theme source files in.
-    source_directory: source/themes
-    # A list of Scaffold theme information to use as options to scaffold from.
-    scaffold_themes: []
-#      example:
-#        title: Title name here
-#        description: description of theme here
-#        theme_repo: https://github.com/PROJECT/theme_repository.git
-#        theme_repo_branch: master
-#        source_repo: https://github.com/PROJECT/theme_source_repository.git
-#        source_repo_branch: master
+    # Directory relative to the docroot to store theme source files in.
+    source_directory: ../source/themes/custom
+    # A list of Scaffold theme information to use as options to scaffold from. ID is used to replace names.
+    scaffold_themes:
+      biplane:
+        title: Biplane
+        description: A basic, no-frills HTML5 starter theme.
+        theme_repo: https://github.com/VML/Drupal-Theme-Biplane.git
+        theme_repo_branch: master
+        source_repo: https://github.com/VML/Drupal-Theme-Source-Biplane.git
+        source_repo_branch: master
+      blackbird:
+        title: Blackbird
+        description: A feature-filled starter theme that works well with the Blackbird profile of the same name.
+        theme_repo: https://github.com/VML/Drupal-Theme-Blackbird.git
+        theme_repo_branch: master
+        source_repo: https://github.com/VML/Drupal-Theme-Source-Blackbird.git
+        source_repo_branch: master
   url_check:
     urls:
       'http://www.test-url-here.docksal/': 301

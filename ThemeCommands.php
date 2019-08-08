@@ -133,7 +133,7 @@ class ThemeCommands extends DrushCommands implements SiteAliasManagerAwareInterf
     $theme_dir = $docroot . '/themes/custom';
     $source_dir = $this->getConfig()->get('kit.theme.source_directory', NULL);
     if (is_null($source_dir)) {
-      $source_dir_name = 'source/themes';
+      $source_dir_name = 'source/themes/custom';
       $source_dir = $project_root . '/' . $source_dir_name;
     }
 
