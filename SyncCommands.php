@@ -189,8 +189,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $dump_dir = (is_null($dump_directory)) ? '../database_backups' : trim($dump_directory, '/');
     $dump_dir_abs = $docroot . '/' . $dump_dir;
     $dump_file_name = $site . '.' . $environment_from . '.sql';
-    $dump_file = $dump_dir . '/' . $dump_file_name;
-    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name . '.gz';
 
 
     // Run or skip database dump.
@@ -264,13 +263,19 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Dropped local database.', 'success', TRUE);
           $this->write('Importing database from file.');
 
-          $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush sqlc", '/var/www/docroot');
+          $process = $this->processManager()->shell("drush sqlc", '/var/www/docroot');
           $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
           if ($success === 0) {
-            $this->write('Imported database from file.', 'success', TRUE);
-          }
-          else {
-            $this->write('Failure importing database from file.', 'error', TRUE);
+            $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush sqlc", '/var/www/docroot');
+            $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+            if ($success === 0) {
+              $this->write('Imported database from file.', 'success', TRUE);
+            } else {
+              $this->write('Failure importing database from file.', 'error', TRUE);
+              $this->write($process->getErrorOutput());
+            }
+          } else {
+            $this->write('Failure connecting to database.', 'error', TRUE);
             $this->write($process->getErrorOutput());
           }
         }
