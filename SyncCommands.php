@@ -264,13 +264,19 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Dropped local database.', 'success', TRUE);
           $this->write('Importing database from file.');
 
-          $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush sqlc", '/var/www/docroot');
+          $process = $this->processManager()->shell("drush sqlc", '/var/www/docroot');
           $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
           if ($success === 0) {
-            $this->write('Imported database from file.', 'success', TRUE);
-          }
-          else {
-            $this->write('Failure importing database from file.', 'error', TRUE);
+            $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush sqlc", '/var/www/docroot');
+            $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+            if ($success === 0) {
+              $this->write('Imported database from file.', 'success', TRUE);
+            } else {
+              $this->write('Failure importing database from file.', 'error', TRUE);
+              $this->write($process->getErrorOutput());
+            }
+          } else {
+            $this->write('Failure connecting to database.', 'error', TRUE);
             $this->write($process->getErrorOutput());
           }
         }
