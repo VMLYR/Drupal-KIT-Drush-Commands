@@ -189,7 +189,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $dump_dir = (is_null($dump_directory)) ? '../database_backups' : trim($dump_directory, '/');
     $dump_dir_abs = $docroot . '/' . $dump_dir;
     $dump_file_name = $site . '.' . $environment_from . '.sql';
-    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name . '.gz';
 
 
     // Run or skip database dump.
