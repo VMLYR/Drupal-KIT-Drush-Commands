@@ -125,6 +125,7 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $alias_options['#env-vars']['SITE_ENVIRONMENT'] = $environment;
     if ($uri = $alias_as->get('uri', NULL)) {
       $alias_options['uri'] = $uri;
+      $alias->set('uri', $uri);
     }
     $alias->set('options', $alias_options);
     $alias->set('envs', $alias_options['#env-vars']);
