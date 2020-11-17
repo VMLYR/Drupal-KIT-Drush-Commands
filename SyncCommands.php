@@ -76,7 +76,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $site = NULL;
     }
     if (is_null($site)) {
-      $site = $this->io()->choice("Please select the site to sync", $sites, 'www');
+      $site = $this->io()->choice("Please select the site to sync", $sites);
     }
 
     $local_alias = $this->siteAliasManager()->getAlias("@{$site}.local");

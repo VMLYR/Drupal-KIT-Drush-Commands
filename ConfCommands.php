@@ -61,7 +61,7 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $site = NULL;
     }
     if (is_null($site)) {
-      $site = $this->io()->choice("Please select the site to {$operation} as", $sites, 'www');
+      $site = $this->io()->choice("Please select the site to {$operation} as", $sites);
     }
 
     // Get environment if not passed in, or site doesn't exist in available

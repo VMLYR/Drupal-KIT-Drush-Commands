@@ -2,6 +2,8 @@
 
 namespace Drush\Commands\kit_drush_commands\Util;
 
+use Drush\Drush;
+
 /**
  * Inflection trait for figuring out if a module is enabled.
  */
@@ -10,7 +12,7 @@ trait EnabledModulesTrait {
   /**
    * Checks if a module is installed.
    *
-   * @param string $alias
+   * @param \Consolidation\SiteAlias\SiteAlias $alias
    *   The Drush alias.
    * @param string $module
    *   The module name.
@@ -25,7 +27,7 @@ trait EnabledModulesTrait {
   /**
    * Get enabled modules from a specific alias.
    *
-   * @param string $alias
+   * @param \Consolidation\SiteAlias\SiteAlias $alias1
    *   The Drush alias.
    *
    * @return mixed
@@ -33,15 +35,14 @@ trait EnabledModulesTrait {
    */
   public function getEnabledModules($alias) {
     $command_options = [
-      '--status=enabled',
+      'status' => 'enabled',
+      'format' => 'json',
     ];
-    $backend_options = [
-      'log' => FALSE,
-      'output' => FALSE,
-    ];
-    $response = drush_invoke_process($alias, 'pm-list', [], $command_options, $backend_options);
-    if ($response) {
-      return $response['object'];
+
+    $process = Drush::drush($alias, 'pm:list', [], $command_options);
+    $success = $process->run(null, $alias->get('envs'));
+    if ($success === 0) {
+      return $process->getOutputAsJson();
     }
 
     return [];
