@@ -283,7 +283,7 @@ class UrlCommands extends DrushCommands implements SiteAliasManagerAwareInterfac
       }
 
       // Get URI from drush conext.
-      if (empty($host) &&  $drush_uri = drush_get_context('DRUSH_URI', NULL)) {
+      if (empty($host) &&  $drush_uri = $this->input('DRUSH_URI', null)) {
         $host = parse_url($drush_uri, PHP_URL_HOST);
       }
 
