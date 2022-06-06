@@ -225,6 +225,10 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       if (!$success) {
         $this->write('Skipping database dump. Import will use old file if one exists.', 'warning');
       }
+      // Skip dump if we have a recent file.
+      elseif (file_exists($dump_file_abs) && time()-filemtime($dump_file_abs) < 8 * 3600) {
+        $this->write('Skipping database dump. Recent dump found.', 'notice');
+      }
       else {
         $this->write('Dumping database to file.');
 
