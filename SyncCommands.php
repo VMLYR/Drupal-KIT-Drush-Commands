@@ -189,9 +189,10 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $dump_dir = (is_null($dump_directory)) ? '../database_backups' : trim($dump_directory, '/');
     $dump_dir_abs = $docroot . '/' . $dump_dir;
     $dump_file_name = $site . '.' . $environment_from . '.sql';
-    $dump_file = $dump_dir . '/' . $dump_file_name;
-    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_zip_name = $dump_file_name . '.gz';
 
+    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_zip_abs = $dump_dir_abs . '/' . $dump_file_zip_name;
 
     // Run or skip database dump.
     if ($skip_db_dump) {
@@ -227,11 +228,26 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       else {
         $this->write('Dumping database to file.');
 
-        $process = Drush::process("drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_abs}");
+        $process = Drush::process("drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_zip_abs}");
         $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
 
         if ($success === 0) {
           $this->write('Dumping database to file.', 'success', TRUE);
+
+          $this->write('Uncompressing database.');
+
+          $process = Drush::process("gunzip -df {$dump_file_zip_abs}");
+          $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+
+          if ($success === 0) {
+            $this->write('Uncompressing database.', 'success', TRUE);
+          }
+          else {
+            $this->write('Error uncompressing database.', 'error', TRUE);
+            $this->write($process->getErrorOutput());
+            $this->write('Import will use old file if one exists.', 'warning');
+          }
+
         }
         else {
           $this->write('Error dumping database.', 'error', TRUE);
@@ -264,7 +280,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Dropped local database.', 'success', TRUE);
           $this->write('Importing database from file.');
 
-          $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush @{$site}.local sqlc", '/var/www/docroot');
+          $process = $this->processManager()->shell("drush @{$site}.local sqlc < $dump_file_abs", '/var/www/docroot');
           $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
           if ($success === 0) {
             $this->write('Imported database from file.', 'success', TRUE);
