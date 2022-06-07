@@ -56,7 +56,9 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    * @option skip-db-dump
    *   Skip the database dump and use existing database-dump for import.
    * @option skip-db-import
-   *   Skip thd database import.
+   *   Skip the database import.
+   * @option force-download
+   *   Force the database download regardless of existing file.
    * @command kit:sync
    * @usage drush sync www remote_prod local
    *   Syncs local environment from another environment.
@@ -67,6 +69,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $skip_config = (isset($options['skip-config']) && $options['skip-config']);
     $skip_db_dump = (isset($options['skip-db-dump']) && $options['skip-db-dump']);
     $skip_db_import = (isset($options['skip-db-import']) && $options['skip-db-import']);
+    $force_download = (isset($options['force-download']) && $options['force-download']);
 
     // Get site if not passed in, or site doesn't exist in available sites.
     $sites = $this->getSites();
@@ -224,6 +227,10 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       // Skip dump if directory is not accessible.
       if (!$success) {
         $this->write('Skipping database dump. Import will use old file if one exists.', 'warning');
+      }
+      // Skip dump if we have a recent file.
+      elseif ((file_exists($dump_file_abs) && time()-filemtime($dump_file_abs) < 8 * 3600) && !force_download) {
+        $this->write('Skipping database dump. Recent dump found.', 'notice');
       }
       else {
         $this->write('Dumping database to file.');
