@@ -308,6 +308,4 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       throw new CommandFailedException('Failed ' . strtolower($title));
     }
   }
-
-
 }
