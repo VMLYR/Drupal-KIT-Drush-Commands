@@ -2,6 +2,7 @@
 
 namespace Drush\Commands\kit_drush_commands;
 
+use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Backend\BackendPathEvaluator;
@@ -12,6 +13,7 @@ use Drush\Commands\kit_drush_commands\Util\WriteWrapperTrait;
 use Drush\Drush;
 use Drush\SiteAlias\HostPath;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Drush\Exceptions\CommandFailedException;
 
 /**
  * Command to sync the current environment with another environment.
@@ -56,17 +58,20 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    * @option skip-db-dump
    *   Skip the database dump and use existing database-dump for import.
    * @option skip-db-import
-   *   Skip thd database import.
+   *   Skip the database import.
+   * @option force-download
+   *   Force the database download regardless of existing file.
    * @command kit:sync
    * @usage drush sync www remote_prod local
    *   Syncs local environment from another environment.
    * @aliases ks, ksync, sync
    */
-  public function sync($site = NULL, $environment_from = NULL, $environment_as = NULL, $options = ['dump-dir' => NULL, 'skip-composer' => FALSE, 'skip-config' => FALSE, 'skip-db-dump' => FALSE, 'skip-db-import' => FALSE]) {
+  public function sync($site = NULL, $environment_from = NULL, $environment_as = NULL, $options = ['dump-dir' => NULL, 'skip-composer' => FALSE, 'skip-config' => FALSE, 'skip-db-dump' => FALSE, 'skip-db-import' => FALSE, 'force-download' => FALSE]) {
     $skip_composer = (isset($options['skip-composer']) && $options['skip-composer']);
     $skip_config = (isset($options['skip-config']) && $options['skip-config']);
     $skip_db_dump = (isset($options['skip-db-dump']) && $options['skip-db-dump']);
     $skip_db_import = (isset($options['skip-db-import']) && $options['skip-db-import']);
+    $force_download = (isset($options['force-download']) && $options['force-download']);
 
     // Get site if not passed in, or site doesn't exist in available sites.
     $sites = $this->getSites();
@@ -121,14 +126,19 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
 
     $this->io()->success("Syncing {$site} from {$environment_from} and importing as {$environment_as}.");
 
-    // Run or skip composer import.
-    $this->sectionComposer($skip_composer);
+    try {
+      // Run or skip composer import.
+      $this->sectionComposer($skip_composer);
 
-    // Run or skip database sync.
-    $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import);
+      // Run or skip database sync.
+      $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import, $force_download);
 
-    // Run or skip configuration sync.
-    $this->sectionConfig($site, $environment_as, $skip_config);
+      // Run or skip configuration sync.
+      $this->sectionConfig($site, $environment_as, $skip_config);
+    } catch (\Exception $e) {
+      $this->io()->newLine();
+      return new CommandError($e->getMessage());
+    }
   }
 
   /**
@@ -146,17 +156,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $this->write('Skipping Composer dependency installation.', 'notice');
     }
     else {
-      $this->write('Installing Composer dependencies.');
-
-      $process = $this->processManager()->shell('composer install --prefer-dist -v -o', '/var/www');
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-
-      if ($success === 0) {
-        $this->write('Installed Composer dependencies.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure installing Composer dependencies. Run as verbose to see full output.', 'error', TRUE);
-      }
+      $this->runCommand('Installing composer dependencies', 'Installed composer dependencies', 'composer install --prefer-dist -v -o', '/var/www');
     }
   }
 
@@ -174,7 +174,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    * @param bool $skip_db_import
    *   Whether the database import section should be skipped.
    */
-  protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE) {
+  protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE, $force_download = FALSE) {
     $this->io()->newLine();
     $this->io()->title('Database');
 
@@ -189,9 +189,10 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $dump_dir = (is_null($dump_directory)) ? '../database_backups' : trim($dump_directory, '/');
     $dump_dir_abs = $docroot . '/' . $dump_dir;
     $dump_file_name = $site . '.' . $environment_from . '.sql';
-    $dump_file = $dump_dir . '/' . $dump_file_name;
-    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_zip_name = $dump_file_name . '.gz';
 
+    $dump_file_abs = $dump_dir_abs . '/' . $dump_file_name;
+    $dump_file_zip_abs = $dump_dir_abs . '/' . $dump_file_zip_name;
 
     // Run or skip database dump.
     if ($skip_db_dump) {
@@ -206,7 +207,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Created database dump directory.', 'success', TRUE);
         }
         else {
-          $this->write('Failure creating database dump directory.', 'error', TRUE);
+          throw new CommandFailedException('Failure creating database dump directory.');
         }
       }
       else {
@@ -216,7 +217,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Verified database dump directory permissions.', 'success', TRUE);
         }
         else {
-          $this->write('Failure adjusting database dump directory permissions.', 'error', TRUE);
+          throw new CommandFailedException('Failure adjusting database dump directory permissions.');
         }
       }
 
@@ -224,20 +225,13 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       if (!$success) {
         $this->write('Skipping database dump. Import will use old file if one exists.', 'warning');
       }
+      // Skip dump if we have a recent file.
+      elseif ((file_exists($dump_file_abs) && time()-filemtime($dump_file_abs) < 8 * 3600) && !$force_download) {
+        $this->write('Skipping database dump. Recent dump found.', 'notice');
+      }
       else {
-        $this->write('Dumping database to file.');
-
-        $process = Drush::process("drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_abs}");
-        $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-
-        if ($success === 0) {
-          $this->write('Dumping database to file.', 'success', TRUE);
-        }
-        else {
-          $this->write('Error dumping database.', 'error', TRUE);
-          $this->write($process->getErrorOutput());
-          $this->write('Import will use old file if one exists.', 'warning');
-        }
+        $this->runCommand('Dumping database to file', 'Database dumped to file', "drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_zip_abs}");
+        $this->runCommand('Uncompressing database', 'Database uncompressed', "gunzip -df {$dump_file_zip_abs}");
       }
     }
 
@@ -252,28 +246,8 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
         $this->write('Skipping database import.', 'warning');
       }
       else {
-        $this->write('Dropping local database.');
-        $process = Drush::drush($local_alias, 'sql:drop', [], ['yes' => TRUE]);
-        $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-        if ($success !== 0) {
-          $this->write('Failure dropping local database.', 'error', TRUE);
-          $this->write($process->getErrorOutput());
-          $this->write('Skipping database import.', 'warning');
-        }
-        else {
-          $this->write('Dropped local database.', 'success', TRUE);
-          $this->write('Importing database from file.');
-
-          $process = $this->processManager()->shell("gunzip -c {$dump_file_abs} | drush @{$site}.local sqlc", '/var/www/docroot');
-          $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-          if ($success === 0) {
-            $this->write('Imported database from file.', 'success', TRUE);
-          }
-          else {
-            $this->write('Failure importing database from file.', 'error', TRUE);
-            $this->write($process->getErrorOutput());
-          }
-        }
+        $this->runDrushCommand('Dropping local database', 'Dropped local database', $alias, 'sql:drop'[],['yes' => TRUE]);
+        $this->runCommand('Importing database from file', 'Imported database', "drush @{$site}.local sqlc < $dump_file_abs");
       }
     }
   }
@@ -297,17 +271,43 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $this->write('Skipping configuration sync.', 'notice');
     }
     else {
-      $this->write("Syncing configuration for {$site} as {$environment}.");
       $alias = $this->siteAliasManager()->get("@{$site}.local");
-      $process = Drush::drush($alias, 'kit:conf', ['import', $site, $environment], ['yes' => TRUE]);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-      if ($success === 0) {
-        $this->write("Imported configuration for {$site} as {$environment}.", 'success', TRUE);
-      }
-      else {
-        $this->write('Failure importing configuration.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-      }
+      $this->runDrushCommand("Syncing configuration for {$site} as {$environment}.", 'Synced configuration', $alias, 'kit:conf', ['import', $site, $environment], ['yes' => TRUE]);
     }
   }
+
+
+  /**
+   * Run a drush command.
+   */
+  protected function runDrushCommand($title, $success_message, $alias, $command, $args = [], $options = [], $options_double_dash = []) {
+    $this->io()->title($title);
+    $process = Drush::drush($alias, $command, $args, $options, $options_double_dash);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
+    if ($success === 0) {
+      $this->write($success_message, 'success', TRUE);
+    }
+    else {
+      $this->write($process->getErrorOutput());
+      throw new CommandFailedException('Failed ' . strtolower($title));
+    }
+  }
+
+  /**
+   * Run a command.
+   */
+  protected function runCommand($title, $success_message, $command, $cwd = '/var/www/docroot') {
+    $this->write($title);
+    $process = $this->processManager()->shell($command, $cwd);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+    if ($success === 0) {
+      $this->write($success_message, 'success', TRUE);
+    }
+    else {
+      $this->write($process->getErrorOutput());
+      throw new CommandFailedException('Failed ' . strtolower($title));
+    }
+  }
+
+
 }
