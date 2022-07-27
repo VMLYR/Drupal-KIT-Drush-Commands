@@ -128,7 +128,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     $this->sectionComposer($skip_composer);
 
     // Run or skip database sync.
-    $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import);
+    $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import, $force_download);
 
     // Run or skip configuration sync.
     $this->sectionConfig($site, $environment_as, $skip_config);
@@ -176,8 +176,14 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    *   Whether the database dump section should be skipped.
    * @param bool $skip_db_import
    *   Whether the database import section should be skipped.
+   * @param bool $force_download
+   *   Should we force a download?
+   * 
+   * @return void
+   * 
+   * @throws \Exception
    */
-  protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE) {
+  protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE, $force_download = FALSE) {
     $this->io()->newLine();
     $this->io()->title('Database');
 
@@ -229,7 +235,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
         $this->write('Skipping database dump. Import will use old file if one exists.', 'warning');
       }
       // Skip dump if we have a recent file.
-      elseif ((file_exists($dump_file_abs) && time()-filemtime($dump_file_abs) < 8 * 3600) && !force_download) {
+      elseif ((file_exists($dump_file_abs) && time()-filemtime($dump_file_abs) < 8 * 3600) && !$force_download) {
         $this->write('Skipping database dump. Recent dump found.', 'notice');
       }
       else {
