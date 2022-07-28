@@ -2,6 +2,7 @@
 
 namespace Drush\Commands\kit_drush_commands;
 
+use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drush\Backend\BackendPathEvaluator;
@@ -12,6 +13,7 @@ use Drush\Commands\kit_drush_commands\Util\WriteWrapperTrait;
 use Drush\Drush;
 use Drush\SiteAlias\HostPath;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Drush\Exceptions\CommandFailedException;
 
 /**
  * Command to sync the current environment with another environment.
@@ -124,14 +126,19 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
 
     $this->io()->success("Syncing {$site} from {$environment_from} and importing as {$environment_as}.");
 
-    // Run or skip composer import.
-    $this->sectionComposer($skip_composer);
+    try {
+      // Run or skip composer import.
+      $this->sectionComposer($skip_composer);
 
-    // Run or skip database sync.
-    $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import, $force_download);
+      // Run or skip database sync.
+      $this->sectionDatabase($site, $environment_from, $options['dump-dir'], $skip_db_dump, $skip_db_import, $force_download);
 
-    // Run or skip configuration sync.
-    $this->sectionConfig($site, $environment_as, $skip_config);
+      // Run or skip configuration sync.
+      $this->sectionConfig($site, $environment_as, $skip_config);
+    } catch (\Exception $e) {
+      $this->io()->newLine();
+      return new CommandError($e->getMessage());
+    }
   }
 
   /**
@@ -149,17 +156,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $this->write('Skipping Composer dependency installation.', 'notice');
     }
     else {
-      $this->write('Installing Composer dependencies.');
-
-      $process = $this->processManager()->shell('composer install --prefer-dist -v -o', '/var/www');
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-
-      if ($success === 0) {
-        $this->write('Installed Composer dependencies.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure installing Composer dependencies. Run as verbose to see full output.', 'error', TRUE);
-      }
+      $this->runCommand('Installing composer dependencies', 'Installed composer dependencies', 'composer install --prefer-dist -v -o', '/var/www');
     }
   }
 
@@ -216,7 +213,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Created database dump directory.', 'success', TRUE);
         }
         else {
-          $this->write('Failure creating database dump directory.', 'error', TRUE);
+          throw new CommandFailedException('Failure creating database dump directory.');
         }
       }
       else {
@@ -226,7 +223,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
           $this->write('Verified database dump directory permissions.', 'success', TRUE);
         }
         else {
-          $this->write('Failure adjusting database dump directory permissions.', 'error', TRUE);
+          throw new CommandFailedException('Failure adjusting database dump directory permissions.');
         }
       }
 
@@ -239,34 +236,8 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
         $this->write('Skipping database dump. Recent dump found.', 'notice');
       }
       else {
-        $this->write('Dumping database to file.');
-
-        $process = Drush::process("drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_zip_abs}");
-        $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-
-        if ($success === 0) {
-          $this->write('Dumping database to file.', 'success', TRUE);
-
-          $this->write('Uncompressing database.');
-
-          $process = Drush::process("gunzip -df {$dump_file_zip_abs}");
-          $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-
-          if ($success === 0) {
-            $this->write('Uncompressing database.', 'success', TRUE);
-          }
-          else {
-            $this->write('Error uncompressing database.', 'error', TRUE);
-            $this->write($process->getErrorOutput());
-            $this->write('Import will use old file if one exists.', 'warning');
-          }
-
-        }
-        else {
-          $this->write('Error dumping database.', 'error', TRUE);
-          $this->write($process->getErrorOutput());
-          $this->write('Import will use old file if one exists.', 'warning');
-        }
+        $this->runCommand('Dumping database to file', 'Database dumped to file', "drush @{$site}.{$environment_from} sql:dump --gzip > {$dump_file_zip_abs}");
+        $this->runCommand('Uncompressing database', 'Database uncompressed', "gunzip -df {$dump_file_zip_abs}");
       }
     }
 
@@ -281,28 +252,8 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
         $this->write('Skipping database import.', 'warning');
       }
       else {
-        $this->write('Dropping local database.');
-        $process = Drush::drush($local_alias, 'sql:drop', [], ['yes' => TRUE]);
-        $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-        if ($success !== 0) {
-          $this->write('Failure dropping local database.', 'error', TRUE);
-          $this->write($process->getErrorOutput());
-          $this->write('Skipping database import.', 'warning');
-        }
-        else {
-          $this->write('Dropped local database.', 'success', TRUE);
-          $this->write('Importing database from file.');
-
-          $process = $this->processManager()->shell("drush @{$site}.local sqlc < $dump_file_abs", '/var/www/docroot');
-          $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-          if ($success === 0) {
-            $this->write('Imported database from file.', 'success', TRUE);
-          }
-          else {
-            $this->write('Failure importing database from file.', 'error', TRUE);
-            $this->write($process->getErrorOutput());
-          }
-        }
+        $this->runDrushCommand('Dropping local database', 'Dropped local database', $alias, 'sql:drop', [],['yes' => TRUE]);
+        $this->runCommand('Importing database from file', 'Imported database', "drush @{$site}.local sqlc < $dump_file_abs");
       }
     }
   }
@@ -326,17 +277,43 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
       $this->write('Skipping configuration sync.', 'notice');
     }
     else {
-      $this->write("Syncing configuration for {$site} as {$environment}.");
       $alias = $this->siteAliasManager()->get("@{$site}.local");
-      $process = Drush::drush($alias, 'kit:conf', ['import', $site, $environment], ['yes' => TRUE]);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
-      if ($success === 0) {
-        $this->write("Imported configuration for {$site} as {$environment}.", 'success', TRUE);
-      }
-      else {
-        $this->write('Failure importing configuration.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-      }
+      $this->runDrushCommand("Syncing configuration for {$site} as {$environment}.", 'Synced configuration', $alias, 'kit:conf', ['import', $site, $environment], ['yes' => TRUE]);
     }
   }
+
+
+  /**
+   * Run a drush command.
+   */
+  protected function runDrushCommand($title, $success_message, $alias, $command, $args = [], $options = [], $options_double_dash = []) {
+    $this->io()->title($title);
+    $process = Drush::drush($alias, $command, $args, $options, $options_double_dash);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
+    if ($success === 0) {
+      $this->write($success_message, 'success', TRUE);
+    }
+    else {
+      $this->write($process->getErrorOutput());
+      throw new CommandFailedException('Failed ' . strtolower($title));
+    }
+  }
+
+  /**
+   * Run a command.
+   */
+  protected function runCommand($title, $success_message, $command, $cwd = '/var/www/docroot') {
+    $this->write($title);
+    $process = $this->processManager()->shell($command, $cwd);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run();
+    if ($success === 0) {
+      $this->write($success_message, 'success', TRUE);
+    }
+    else {
+      $this->write($process->getErrorOutput());
+      throw new CommandFailedException('Failed ' . strtolower($title));
+    }
+  }
+
+
 }
