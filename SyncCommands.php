@@ -176,6 +176,12 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    *   Whether the database dump section should be skipped.
    * @param bool $skip_db_import
    *   Whether the database import section should be skipped.
+   * @param bool $force_download
+   *   Should we force a download?
+   * 
+   * @return void
+   * 
+   * @throws \Exception
    */
   protected function sectionDatabase($site, $environment_from, $dump_directory = NULL, $skip_db_dump = FALSE, $skip_db_import = FALSE, $force_download = FALSE) {
     $this->io()->newLine();
