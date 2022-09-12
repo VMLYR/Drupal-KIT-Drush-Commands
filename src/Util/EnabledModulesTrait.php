@@ -40,7 +40,7 @@ trait EnabledModulesTrait {
     ];
 
     $process = Drush::drush($alias, 'pm:list', [], $command_options);
-    $success = $process->run(null, $alias->get('envs'));
+    $success = $process->run(null, [$alias->get('site-env')]);
     if ($success === 0) {
       return $process->getOutputAsJson();
     }
