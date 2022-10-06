@@ -4,6 +4,7 @@ namespace Drush\Commands\kit_drush_commands;
 
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAlias;
+use Consolidation\SiteAlias\SiteAliasInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Consolidation\SiteProcess\SiteProcess;
@@ -13,6 +14,7 @@ use Drush\Commands\kit_drush_commands\Util\EnvironmentsTrait;
 use Drush\Commands\kit_drush_commands\Util\WriteWrapperTrait;
 use Drush\Drush;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Drush\Exceptions\CommandFailedException;
 
 /**
  * Command to run configuration import or export as a specific environment.
@@ -93,14 +95,19 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
     // Load 'as' alias to get environment variable and relevant site uri.
     $alias = $this->getMockEnvAlias($alias_id);
 
-    switch ($operation) {
-      case 'export':
-        $this->runExport($alias);
-        break;
+    try {
+      switch ($operation) {
+        case 'export':
+          $this->runExport($alias);
+          break;
 
-      case 'import':
-        $this->runImport($alias);
-        break;
+        case 'import':
+          $this->runImport($alias);
+          break;
+      }
+    } catch (\Exception $e) {
+      $this->io()->newLine();
+      return new CommandError($e->getMessage());
     }
   }
 
@@ -140,71 +147,19 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    *   The alias to run the export as.
    */
   protected function runExport(SiteAlias $alias) {
-    $this->io()->title('Export');
-
     // Clear cache.
-    $this->write('Clearing cache');
-    $process = Drush::drush($alias, 'cr');
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Cleared cache.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure clearing cache.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-    }
+    $this->runDrushCommand('Clearing cache', 'Cleared cache', $alias, 'cr');
 
-    // Export configuration.
-    $this->write('Exporting configuration.');
-    $process = Drush::drush($alias, 'config-export', [], ['yes' => TRUE]);
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Exported configuration.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure exporting configuration.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-      return new CommandError();
-    }
+    $this->runDrushCommand('Exporting configuration', 'Exported configuration', $alias, 'config-export', [], ['yes' => TRUE]);
 
     // If structure sync module exists, export blocks and taxonomies.
     if ($this->checkEnabledModule($alias, 'structure_sync')) {
-      $this->write('Exporting blocks.');
-      $process = Drush::drush($alias, 'export-blocks', [], ['choice' => 'full']);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-      if ($success === 0) {
-        $this->write('Exported blocks.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure exporting blocks.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-        return new CommandError();
-      }
-
-      $this->write('Exporting taxonomies.');
-      $process = Drush::drush($alias, 'export-taxonomies', [], ['choice' => 'full']);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-      if ($success === 0) {
-        $this->write('Exported taxonomies.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure exporting taxonomies.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-        return new CommandError();
-      }
+      $this->runDrushCommand('Exporting blocks', 'Exported blocks', $alias,'export-blocks', [], ['choice' => 'full']);
+      $this->runDrushCommand('Exporting taxonomies', 'Exported taxonomies', $alias, 'export-taxonomies', [], ['choice' => 'full']);
     }
-
     // Clear cache.
-    $this->write('Clearing cache');
-    $process = Drush::drush($alias, 'cr');
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Cleared cache.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure clearing cache.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-    }
+    $this->runDrushCommand('Clearing cache', 'Cleared cache', $alias, 'cr');
+
   }
 
   /**
@@ -214,86 +169,40 @@ class ConfCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
    *   The alias to run the import as.
    */
   protected function runImport(SiteAlias $alias) {
-    $this->io()->title('Import');
-
     // Clear cache.
-    $this->write('Clearing cache');
-    $process = Drush::drush($alias, 'cr');
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Cleared cache.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure clearing cache.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-    }
+    $this->runDrushCommand('Clearing cache', 'Cleared cache', $alias, 'cr');
 
-    // Import configuration.
-    $this->write('Importing configuration.');
-    $process = Drush::drush($alias, 'config-import', [], ['yes' => TRUE]);
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Imported configuration.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure importing configuration.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-      return new CommandError();
-    }
+    $this->runDrushCommand('Importing configuration', 'Imported configuration', $alias, 'config-import', [], ['yes' => TRUE]);
 
     // If structure sync module exists, import blocks and taxonomies.
     if ($this->checkEnabledModule($alias, 'structure_sync')) {
-      $this->write('Importing blocks.');
-      $process = Drush::drush($alias, 'import-blocks', [], ['choice' => 'full']);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-      if ($success === 0) {
-        $this->write('Imported blocks.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure importing blocks.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-        return new CommandError();
-      }
-
-      $this->write('Importing taxonomies.');
-      $process = Drush::drush($alias, 'import-taxonomies', [], ['choice' => 'full']);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-      if ($success === 0) {
-        $this->write('Imported taxonomies.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure importing taxonomies.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-        return new CommandError();
-      }
+      $this->runDrushCommand('Importing blocks', 'Imported bloacks', $alias, 'import-blocks', [], ['choice' => 'full']);
+      $this->runDrushCommand('Importing taxonomies', 'Imported taxonomies', $alias, 'import-taxonomies', [], ['choice' => 'full']);
     }
 
     // If default content deploy module exists, import default content.
     if ($this->checkEnabledModule($alias, 'default_content_deploy')) {
-      $this->io()->title('Importing content');
-      $process = Drush::drush($alias, 'default-content-deploy-import', [], ['yes' => TRUE]);
-      $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-      if ($success === 0) {
-        $this->write('Imported content.', 'success', TRUE);
-      }
-      else {
-        $this->write('Failure importing content.', 'error', TRUE);
-        $this->write($process->getErrorOutput());
-        return new CommandError();
-      }
+      $this->runDrushCommand('Importing content', 'Imported content', $alias, 'default-content-deploy-import', [], ['yes' => TRUE]);
     }
 
     // Clear cache.
-    $this->write('Clearing cache');
-    $process = Drush::drush($alias, 'cr');
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), $alias->get('envs')) : $process->run(null, $alias->get('envs'));
-    if ($success === 0) {
-      $this->write('Cleared cache.', 'success', TRUE);
-    }
-    else {
-      $this->write('Failure clearing cache.', 'error', TRUE);
-      $this->write($process->getErrorOutput());
-    }
+    $this->runDrushCommand('Clearing cache', 'Cleared cache', $alias, 'cr');
+
   }
 
+  /**
+   * Run a command.
+   */
+  protected function runDrushCommand($title, $success_message, $alias, $command, $args = [], $options = [], $options_double_dash = []) {
+    $this->io()->title($title);
+    $process = Drush::drush($alias, $command, $args, $options, $options_double_dash);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), [$alias->get('site-env')]) : $process->run(null, [$alias->get('site-env')]);
+    if ($success === 0) {
+      $this->write($success_message, 'success', TRUE);
+    }
+    else {
+      $this->write($process->getErrorOutput());
+      throw new CommandFailedException('Failed ' . $title);
+    }
+  }
 }
