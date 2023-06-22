@@ -252,7 +252,8 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
         $this->write('Skipping database import.', 'warning');
       }
       else {
-        $this->runDrushCommand('Dropping local database', 'Dropped local database', $local_alias, 'sql:drop', [],['yes' => TRUE]);
+        $alias = $this->siteAliasManager()->get("@{$site}.local");
+        $this->runDrushCommand('Dropping local database', 'Dropped local database', $alias, 'sql:drop', [],['yes' => TRUE]);
         $this->runCommand('Importing database from file', 'Imported database', "drush @{$site}.local sqlc < $dump_file_abs");
       }
     }
@@ -289,7 +290,7 @@ class SyncCommands extends DrushCommands implements SiteAliasManagerAwareInterfa
   protected function runDrushCommand($title, $success_message, $alias, $command, $args = [], $options = [], $options_double_dash = []) {
     $this->io()->title($title);
     $process = Drush::drush($alias, $command, $args, $options, $options_double_dash);
-    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime(), [$alias->get('site-env')]) : $process->run(null, [$alias->get('site-env')]);
+    $success = ($this->io()->isVerbose()) ? $process->run($process->showRealtime()) : $process->run(null);
     if ($success === 0) {
       $this->write($success_message, 'success', TRUE);
     }
